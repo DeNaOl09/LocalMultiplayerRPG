@@ -78,4 +78,3 @@ while running:
 
     pg.display.update()
 
-print("AYOOOOOOO WAHTA hELLLL")
