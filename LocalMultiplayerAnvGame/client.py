@@ -77,3 +77,5 @@ while running:
     window.blit(skin, (x, y))
 
     pg.display.update()
+
+print("AYOOOOOOO WAHTA hELLLL")
