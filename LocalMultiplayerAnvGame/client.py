@@ -10,6 +10,30 @@ nick = input('Введите ник >>> ')
 
 playerclass = input('Выберите класс: 1-варвар: ')
 
+
+class Cell:
+    def __init__(self, x, y, type, enemy):
+        self.x = x
+        self.y = y
+        self.type = type
+        self.enemy = enemy
+
+    def draw(self):
+        dirt = pg.image.load('images/dirt.png')
+        grass = pg.image.load('images/grass.png')
+        sand = pg.image.load('images/sand.png')
+
+        if self.type == 'dirt':
+            window.blit(dirt, (self.x, self.y))
+        elif self.type == 'grass':
+            window.blit(grass, (self.x, self.y))
+        elif self.type == 'sand':
+            window.blit(sand, (self.x, self.y))
+
+        if self.x == selected[0] and self.y == selected[1]:
+            pg.draw.rect(window, (255, 0, 255), (self.x, self.y, 100, 100), 5)
+
+
 hp = 0
 dmg = 0
 x = 100
@@ -38,6 +62,8 @@ pg.display.set_caption('LocalMultiplayer.')
 clock = pg.time.Clock()
 
 running = True
+selected = (-1, -1)
+
 while running:
     clock.tick(60)
 
@@ -47,9 +73,9 @@ while running:
     data = data.split('-')
     cells = []
     for cell in data:
-        cells.append(cell.split(';'))
-
-    cells = cells[:-1]
+        info = cell.split(';')
+        if info:
+            cells.append(Cell(info[0], info[1], info[2], info[3]))
 
     '''Обработка событий'''
     for event in pg.event.get():
@@ -57,6 +83,12 @@ while running:
             running = False
         elif event.type == pg.mouse.get_pressed()[0]:
             mx, my = pg.mouse.get_pos()
+            for cell in cells:
+                if cell.x == mx and cell.y == my:
+                    if cell.x == selected[0] and cell.y == selected[1]:
+                        selected = (-1, -1)
+                    else:
+                        selected = (cell.x, cell.y)
 
     gsocket.send(f'{x} {y}'.encode())
 
@@ -66,15 +98,7 @@ while running:
     sand = pg.image.load('images/sand.png')
 
     for cell in cells:
-
-        if cell[2] == 'dirt':
-            window.blit(dirt, (int(cell[0]), int(cell[1])))
-        elif cell[2] == 'grass':
-            window.blit(grass, (int(cell[0]), int(cell[1])))
-        elif cell[2] == 'sand':
-            window.blit(sand, (int(cell[0]), int(cell[1])))
-
-    window.blit(skin, (x, y))
+        cell.draw()
 
     pg.display.update()
 
