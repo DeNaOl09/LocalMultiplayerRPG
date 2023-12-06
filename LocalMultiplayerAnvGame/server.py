@@ -37,6 +37,9 @@ s.setsockopt(sc.IPPROTO_TCP, sc.TCP_NODELAY, 1)
 
 playersq = int(input('Введите кол-во игроков: '))
 
+window = pg.display.set_mode((400, 400))
+pg.display.set_caption('LocalMultiplayerServer')
+
 s.bind(('', 5555))
 s.setblocking(False)
 s.listen(playersq)
@@ -58,6 +61,10 @@ for i in range(10):
 
 '''Цикл сервера'''
 while server_works:
+    for event in pg.event.get():
+        if event.type == pg.QUIT:
+            server_works = False
+
     fps = round(clock.get_fps())
 
     '''Проверяем новые подключения'''
@@ -87,7 +94,6 @@ while server_works:
 
             for cell in cells:
                 dx, dy = abs(player.x-cell.x), abs(player.y-cell.y)
-                print(dx, dy)
                 if dx**2+dy**2 <= 1200**2:
                     senddata += f'{cell.x};{cell.y};{cell.type};{cell.enemy}-'
 
@@ -95,3 +101,5 @@ while server_works:
 
         except:
             pass
+
+    pg.display.flip()

@@ -1,7 +1,8 @@
 import pygame as pg
 import socket as sc
+from time import time
 
-WIDTHWIN, HEIGHTWIN = 1000, 1000
+WIDTHWIN, HEIGHTWIN = 1200, 1000
 
 gsocket = sc.socket(sc.AF_INET, sc.SOCK_STREAM)
 gsocket.setsockopt(sc.IPPROTO_TCP, sc.TCP_NODELAY, 1)
@@ -11,10 +12,16 @@ nick = input('Введите ник >>> ')
 playerclass = input('Выберите класс: 1-варвар: ')
 
 
+
+class Button:
+    def __init__(self, x, y, pic):
+        pass
+
+
 class Cell:
     def __init__(self, x, y, type, enemy):
-        self.x = x
-        self.y = y
+        self.x = int(x)
+        self.y = int(y)
         self.type = type
         self.enemy = enemy
 
@@ -63,9 +70,15 @@ clock = pg.time.Clock()
 
 running = True
 selected = (-1, -1)
+clickcd = time()
 
 while running:
     clock.tick(60)
+
+    window.fill((227, 62, 14))
+
+    '''Отправляем перемещения'''
+    gsocket.send(f'{x} {y}'.encode())
 
     '''Принимаю состояние игрового поля'''
     data = gsocket.recv(4096)
@@ -74,23 +87,29 @@ while running:
     cells = []
     for cell in data:
         info = cell.split(';')
-        if info:
+        if len(info) == 4:
             cells.append(Cell(info[0], info[1], info[2], info[3]))
 
     '''Обработка событий'''
     for event in pg.event.get():
         if event.type == pg.QUIT:
             running = False
-        elif event.type == pg.mouse.get_pressed()[0]:
+
+    if pg.mouse.get_pressed()[0]:
+        if time()-clickcd >= 0.3:
             mx, my = pg.mouse.get_pos()
+            mx = mx//100*100
+            my = my//100*100
             for cell in cells:
+
                 if cell.x == mx and cell.y == my:
                     if cell.x == selected[0] and cell.y == selected[1]:
                         selected = (-1, -1)
                     else:
                         selected = (cell.x, cell.y)
+                    break
 
-    gsocket.send(f'{x} {y}'.encode())
+            clickcd = time()
 
     '''Отрисовка игрового поля'''
     dirt = pg.image.load('images/dirt.png')
@@ -99,6 +118,8 @@ while running:
 
     for cell in cells:
         cell.draw()
+
+    window.blit(skin, (x, y))
 
     pg.display.update()
 
