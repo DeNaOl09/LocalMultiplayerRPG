@@ -1,6 +1,7 @@
 import pygame as pg
 import socket as sc
 from time import time
+from random import randint
 
 WIDTHWIN, HEIGHTWIN = 1200, 1000
 
@@ -10,6 +11,12 @@ ip = input('Введите IP >>> ')
 nick = input('Введите ник >>> ')
 
 playerclass = input('Выберите класс: 1-варвар: ')
+
+
+class Enemy:
+    def __init__(self, hp, dmg):
+        self.hp = hp
+        self.dmg = dmg
 
 
 class Button:
@@ -39,6 +46,8 @@ class Cell:
         self.enemy = enemy
 
     def draw(self):
+        killed = False
+
         dirt = pg.image.load('images/dirt.png')
         grass = pg.image.load('images/grass.png')
         sand = pg.image.load('images/sand.png')
@@ -53,6 +62,15 @@ class Cell:
         if self.x == selected[0] and self.y == selected[1]:
             pg.draw.rect(window, (255, 0, 255), (self.x, self.y, 100, 100), 5)
 
+        if self.enemy:
+            if self.enemy.hp <= 0:
+                killed = True
+            if self.enemy.dmg == 3:
+                window.blit(pg.image.load('images/reptiloid.png'), (self.x, self.y))
+
+        if killed:
+            self.enemy = False
+
 
 hp = 0
 dmg = 0
@@ -64,6 +82,7 @@ mfont = pg.font.SysFont('Arial', 24)
 
 buttons = []
 walk = Button(1000, 0, pg.image.load('images/go.png'))
+attack = Button(1000, 100, pg.image.load('images/attack.png'))
 
 if playerclass == '1':
     hp = 100
@@ -92,14 +111,21 @@ selected = (-1, -1)
 clickcd = time()
 info_text = mfont.render('', True, (0, 255, 255))
 infocd = time()
+hitcd = time()
+hit = False
+damaged = 0
 
 while running:
     clock.tick(60)
 
     window.fill((227, 62, 14))
 
-    '''Отправляем перемещения'''
-    gsocket.send(f'{x} {y}'.encode())
+    '''Отправляем все данные'''
+    if damaged:
+        gsocket.send(f'{x} {y}-{damaged[0]} {damaged[1]} {damaged[2]}'.encode())
+        damaged = 0
+    else:
+        gsocket.send(f'{x} {y}-'.encode())
 
     '''Принимаю состояние игрового поля'''
     data = gsocket.recv(4096)
@@ -108,15 +134,11 @@ while running:
     cells = []
     for cell in data:
         info = cell.split(';')
-        if len(info) == 4:
-            cells.append(Cell(info[0], info[1], info[2], info[3]))
-
-    if walk.update():
-        if (selected[0] - x)**2 + (selected[1] - y)**2 <= 200**2:
-            x, y = selected[0], selected[1]
-        else:
-            info_text = mfont.render('Слишком далеко!', True, (0, 255, 255))
-            infocd = time()
+        if len(info) == 5:
+            if info[3]:
+                cells.append(Cell(info[0], info[1], info[2], Enemy(int(info[3]), int(info[4]))))
+        elif len(info) == 4:
+            cells.append(Cell(info[0], info[1], info[2], False))
 
     if time()-infocd <= 5:
         window.blit(info_text, (1000, 500))
@@ -134,13 +156,50 @@ while running:
             for cell in cells:
 
                 if cell.x == mx and cell.y == my:
+                    clickcd = time()
                     if cell.x == selected[0] and cell.y == selected[1]:
                         selected = (-1, -1)
                     else:
                         selected = (cell.x, cell.y)
                     break
 
-            clickcd = time()
+    if walk.update():
+        if (selected[0] - x)**2 + (selected[1] - y)**2 <= 200**2:
+            for cell in cells:
+                if cell.x == selected[0] and cell.y == selected[1]:
+                    if not cell.enemy:
+                        x, y = selected[0], selected[1]
+        else:
+            info_text = mfont.render('Слишком далеко!', True, (0, 255, 255))
+            infocd = time()
+
+    if attack.update():
+        for cell in cells:
+            if cell.x == selected[0] and cell.y == selected[1]:
+                if cell.enemy:
+                    if (selected[0] - x)**2 + (selected[1] - y)**2 <= 200**2:
+                        if time() - clickcd >= 0.3:
+                            hit = (selected[0], selected[1])
+                            hitcd = time()
+                            cell.enemy.hp -= dmg
+                            if randint(1, 2) == 2:
+                                hp -= cell.enemy.dmg
+                                info_text = mfont.render(f'dmg: {dmg}, hp: -{cell.enemy.dmg}', True, (0, 255, 255))
+                                infocd = time()
+                            else:
+                                info_text = mfont.render(
+                                    f'dmg: {dmg}!', True, (0, 255, 255))
+                                infocd = time()
+
+                            damaged = (selected[0], selected[1], dmg)
+                            clickcd = time()
+
+                    else:
+                        info_text = mfont.render('Слишком далеко!', True, (0, 255, 255))
+                        infocd = time()
+                else:
+                    info_text = mfont.render('Атаковать не кого!', True, (0, 255, 255))
+                    infocd = time()
 
     '''Отрисовка игрового поля'''
     dirt = pg.image.load('images/dirt.png')
@@ -149,6 +208,12 @@ while running:
 
     for cell in cells:
         cell.draw()
+
+    if hit:
+        if time()-hitcd <= 0.5:
+            window.blit(pg.image.load('images/hit.png'), hit)
+            hit = False
+            hitcd = time()
 
     window.blit(skin, (x, y))
 

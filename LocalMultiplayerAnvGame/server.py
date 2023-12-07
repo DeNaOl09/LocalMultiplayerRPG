@@ -9,6 +9,12 @@ FPS = 100
 WIDTH_ROOM, HEIGHT_ROOM = 1000, 1000
 
 
+class Enemy:
+    def __init__(self, hp, dmg):
+        self.hp = hp
+        self.dmg = dmg
+
+
 class Cell:
     def __init__(self, x, y, type, enemy):
         self.x = x
@@ -47,6 +53,8 @@ print('Готов!')
 server_works = True
 players = []
 cells = []
+enemies = []
+
 for i in range(10):
     for j in range(10):
         rand = randint(1, 10)
@@ -55,7 +63,9 @@ for i in range(10):
         elif 6 <= rand <= 10:
             newcell = Cell(j * 100, i * 100, 'grass', False)
         elif rand == 5:
-            newcell = Cell(j * 100, i * 100, 'sand', False)
+            newcell = Cell(j * 100, i * 100, 'sand', Enemy(15, 3))
+            if newcell.x == 100 and newcell.y == 100:
+                newcell = Cell(j * 100, i * 100, 'sand', False)
 
         cells.append(newcell)
 
@@ -87,15 +97,28 @@ while server_works:
     for player in players:
         try:
             data = player.sock.recv(2048)
-            data = list(map(int, data.decode().split()))
-            player.move(data[0], data[1])
+            data = data.decode().split('-')
+            moveto = data[0].split()
+            player.move(int(moveto[0]), int(moveto[1]))
+            takendamage = data[1].split()
+
+            if len(takendamage) > 1:
+                for cell in cells:
+                    if cell.x == int(takendamage[0]) and cell.y == int(takendamage[1]):
+                        if cell.enemy:
+                            cell.enemy.hp -= int(takendamage[2])
+                            if cell.enemy.hp <= 0:
+                                cell.enemy = False
 
             senddata = ''
 
             for cell in cells:
                 dx, dy = abs(player.x-cell.x), abs(player.y-cell.y)
                 if dx**2+dy**2 <= 1200**2:
-                    senddata += f'{cell.x};{cell.y};{cell.type};{cell.enemy}-'
+                    if cell.enemy:
+                        senddata += f'{cell.x};{cell.y};{cell.type};{cell.enemy.hp};{cell.enemy.dmg}-'
+                    else:
+                        senddata += f'{cell.x};{cell.y};{cell.type};{False}-'
 
             player.sock.send(senddata.encode())
 
