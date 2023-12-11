@@ -10,7 +10,7 @@ gsocket.setsockopt(sc.IPPROTO_TCP, sc.TCP_NODELAY, 1)
 ip = input('Введите IP >>> ')
 nick = input('Введите ник >>> ')
 
-playerclass = input('Выберите класс: 1-варвар: ')
+playerclass = input('Выберите класс: 1-варвар, 2-стрелок: ')
 
 
 class Enemy:
@@ -88,6 +88,15 @@ if playerclass == '1':
     hp = 100
     dmg = 5
     skin = pg.image.load('images/barbarian1.png')
+    attackrange = 200
+    walkrange = 200
+
+elif playerclass == '2':
+    hp = 75
+    dmg = 3
+    skin = pg.image.load('images/gunslinger1.png')
+    attackrange = 600
+    walkrange = 300
 
 handshake = f'{x}@{y}@{hp}@{dmg}@{nick}'
 
@@ -167,7 +176,7 @@ while running:
                     break
 
     if walk.update():
-        if (selected[0] - x)**2 + (selected[1] - y)**2 <= 200**2:
+        if (selected[0] - x)**2 + (selected[1] - y)**2 <= walkrange**2:
             for cell in cells:
                 if cell.x == selected[0] and cell.y == selected[1]:
                     if not cell.enemy:
@@ -180,15 +189,17 @@ while running:
         for cell in cells:
             if cell.x == selected[0] and cell.y == selected[1]:
                 if cell.enemy:
-                    if (selected[0] - x)**2 + (selected[1] - y)**2 <= 200**2:
+                    if (selected[0] - x)**2 + (selected[1] - y)**2 <= attackrange**2:
                         if time() - clickcd >= 0.3:
                             hit = (selected[0], selected[1])
                             hitcd = time()
                             cell.enemy.hp -= dmg
+
                             if randint(1, 2) == 2:
-                                hp -= cell.enemy.dmg
-                                info_text = mfont.render(f'dmg: {dmg}, hp: -{cell.enemy.dmg}', True, (0, 255, 255))
-                                infocd = time()
+                                if cell.enemy.dmg < 10 and (selected[0] - x) ** 2 + (selected[1] - y) ** 2 <= 200 ** 2:
+                                    hp -= cell.enemy.dmg
+                                    info_text = mfont.render(f'dmg: {dmg}, hp: -{cell.enemy.dmg}', True, (0, 255, 255))
+                                    infocd = time()
                             else:
                                 info_text = mfont.render(
                                     f'dmg: {dmg}!', True, (0, 255, 255))
@@ -214,7 +225,10 @@ while running:
 
     if hit:
         if time()-hitcd <= 0.5:
-            window.blit(pg.image.load('images/hit.png'), hit)
+            if playerclass == '1':
+                window.blit(pg.image.load('images/hit1.png'), hit)
+            elif playerclass == '2':
+                window.blit(pg.image.load('images/hit2.png'), hit)
             hit = False
             hitcd = time()
 
