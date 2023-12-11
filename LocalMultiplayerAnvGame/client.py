@@ -127,6 +127,9 @@ while running:
     else:
         gsocket.send(f'{x} {y}-'.encode())
 
+    if hp <= 0:
+        quit()
+
     '''Принимаю состояние игрового поля'''
     data = gsocket.recv(4096)
     data = data.decode()
